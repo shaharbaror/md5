@@ -5,6 +5,7 @@ from protocol import Protocol
 CODE = "EC9C0F7EDCC18A98B1F31853B1813301"
 
 
+
 class Server:
 
     def __init__(self, server_adr):
@@ -14,7 +15,7 @@ class Server:
         self.running = True
 
         self.current_num = 0
-        self.amp = 50000
+        self.amp = 20000
 
     def accept(self):
         print("at here")
@@ -44,6 +45,8 @@ class Server:
                     answer = Protocol.receive(client).decode()
                     print(answer)
                     self.s.sendall(b"0004STOP")
+                    self.clients = {}
+                    self.running = False
 
     def run(self):
         while self.running:

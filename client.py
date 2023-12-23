@@ -25,7 +25,8 @@ class Client:
     def find_answer(num_range: List[int], code: str) -> str:
 
         for i in range(num_range[0], num_range[0] + num_range[1]):
-            if hashlib.md5(bytes(i)).hexdigest() == code:
+
+            if hashlib.md5(str(i).encode()).hexdigest() == code:
                 return str(i)
         return ""
 
