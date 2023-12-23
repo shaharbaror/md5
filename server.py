@@ -1,51 +1,62 @@
-import socket
-from typing import List
+from socket import create_server
+from select import select
 from protocol import Protocol
 
-CODE = "534307fa63684bddfc0c813283f4d760"
+CODE = "EC9C0F7EDCC18A98B1F31853B1813301"
+
 
 class Server:
-    def __init__(self, path, port, code):
-        self.path = path
-        self.port = port
-        self.s = socket.socket()
-        self.clients:List[socket] = []
-        self.code = code
-        self.inc = 50000
-        self.num = 0
 
-    def start_server(self):
-        self.s.bind((self.path, self.port))
-        self.s.listen(10) # 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
+    def __init__(self, server_adr):
+        self.s = create_server(server_adr)
+        self.s.listen(9)
+        self.clients = {}
+        self.running = True
 
-    def accept_clients(self):
-        client, addr = self.s.accept()
-        self.clients.append(client)
-        print("here")
+        self.current_num = 0
+        self.amp = 50000
 
-    def manage_clients(self):
-        for i in self.clients:
-            request = Protocol.get_msg(i)
-            print(request)
-            if request == "code":
-                i.send(Protocol.set_msg(self.code).encode())
-            elif request[:5] == "ready":
-                print("works")
-                cores = request[5:]
-                i.send(Protocol.set_msg(f"{self.num} - {self.num + self.inc * cores}").encode())
-            elif request != "":
-                print("her")
-                self.s.sendall(Protocol.set_msg("close").encode())
-                print(request)
-                self.s.close()
+    def accept(self):
+        print("at here")
+        readable, _, _ = select([self.s], [], [], True)
+        print("got here")
+        if self.s in readable:
+            connection, address = self.s.accept()
+            self.clients.update({connection: address})
+        print("maybe here")
+
+    def respond(self):
+        if len(self.clients.keys()) > 0:
+            readable, _, _ = select(self.clients.keys(), [], [])
+
+            for client in readable:
+                data = Protocol.receive(client).decode()
+                print(data)
+                if data == "code":
+                    client.send(Protocol.prepare_send(CODE))
+                elif "ready" in data:
+                    num = int(data[5:])
+                    print(num)
+                    client.send(Protocol.prepare_send(f"{self.current_num} - {self.amp}"))
+                    self.current_num = self.current_num + self.amp * num
+
+                elif "found" in data:
+                    answer = Protocol.receive(client).decode()
+                    print(answer)
+                    self.s.sendall(b"0004STOP")
+
+    def run(self):
+        while self.running:
+            self.accept()
+
+            self.respond()
+            print("here")
 
 
 def main():
-    server = Server("0.0.0.0", 8000, CODE)
-    server.start_server()
-    while True:
-        server.accept_clients()
-        server.manage_clients()
+    server = Server(('127.0.0.1', 8000))
+    server.run()
+
 
 if __name__ == "__main__":
     main()
